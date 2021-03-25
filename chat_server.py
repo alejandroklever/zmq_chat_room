@@ -3,21 +3,15 @@ import zmq
 import dataclasses
 from typing import List
 
+from zmq.sugar import context
 
-context = zmq.Context()
-socket = context.socket(zmq.REP)
-socket.bind("tcp://*:5555")
 
-while True:
-    #  Wait for next request from client
-    message = socket.recv()
-    print("Received request: %s" % message)
 
-    #  Do some 'work'
-    time.sleep(1)
-
-    #  Send reply back to client
-    socket.send(b"World")
+@dataclasses.dataclass
+class User:
+    username: str
+    address: str
+    port: str
 
 
 @dataclasses.dataclass
@@ -30,4 +24,13 @@ class ChatServer:
     messages: List[Message]
 
     def __init__(self, port: int = 8888):
-        self.port = port
+        self.context: zmq.Context = zmq.Context()
+        self.port: int = port
+        self.socket: zmq.Socket = self.context.socket(zmq.PAIR)
+        self.socket.bind(f"tcp://*:{port}")
+
+    def run(self):
+        while True:
+            data = self.socket.recv_json()
+            username = data['username']
+            message = data['message']

@@ -1,7 +1,7 @@
 run:
 	#
 serve:
-	python chat_server.py
+	python server.py
 connect:
 	python client.py
 	
