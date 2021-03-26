@@ -1,17 +1,7 @@
-import time
-import zmq
 import dataclasses
-from typing import List
+from typing import List, Tuple
 
-from zmq.sugar import context
-
-
-
-@dataclasses.dataclass
-class User:
-    username: str
-    address: str
-    port: str
+import zmq
 
 
 @dataclasses.dataclass
@@ -19,18 +9,39 @@ class Message:
     username: str
     text: str
 
+    @staticmethod
+    def from_json(data):
+        return Message(data['username'], data['message'])
+
+    def to_json(self):
+        return {'username': self.username, 'message': self.text}
+
 
 class ChatServer:
-    messages: List[Message]
+    messages: List[Message] = []
 
-    def __init__(self, port: int = 8888):
-        self.context: zmq.Context = zmq.Context()
-        self.port: int = port
-        self.socket: zmq.Socket = self.context.socket(zmq.PAIR)
-        self.socket.bind(f"tcp://*:{port}")
+    def __init__(self, host: str, port: int, screen_host: str, screen_port: int):
+        self.context = zmq.Context()
+        self.host = host
+        self.port = port
+        self.screen_host = screen_host
+        self.screen_port = screen_port
+
+    def bind(self) -> Tuple[zmq.Socket, zmq.Socket]:
+        # binding process
+        socket = self.context.socket(zmq.REP)
+        socket.bind(f'tcp://{self.host}:{self.port}')
+
+        screen_socket = self.context.socket(zmq.PUB)
+        screen_socket.bind(f'tcp://{self.screen_host}:{self.screen_port}') 
+        
+        return socket, screen_socket
 
     def run(self):
+        socket, screen_socket = self.bind()
+
         while True:
-            data = self.socket.recv_json()
-            username = data['username']
-            message = data['message']
+            data = socket.recv_json()
+            self.messages.append(Message.from_json(data))
+            socket.send(b'\x00')
+            screen_socket.send_json(data)
