@@ -17,30 +17,15 @@ from chat_server import ChatServer
 app = typer.Typer()
 
 
-def start_top_window(window, display):
-    window_lines, window_cols = window.getmaxyx()
-    bottom_line = window_lines - 1
-    window.bkgd(curses.A_NORMAL, curses.color_pair(2))
-    window.scrollok(1)
+def screen_recv(display):
     while True:
         # alternate color pair used to visually check how frequently this loop runs
         # to tell when user input is blocking
-        window.addstr(bottom_line, 1, display.recv_string())
-        window.move(bottom_line, 1)
-        window.scroll(1)
-        window.refresh()
+        print(display.recv_string())
 
-
-def start_bottom_window(window, chat_sender):
-    window.bkgd(curses.A_NORMAL, curses.color_pair(2))
-    window.clear()
-    window.box()
-    window.refresh()
+def screen_send(chat_sender):
     while True:
-        window.clear()
-        window.box()
-        window.refresh()
-        s = window.getstr(1, 1).decode('utf-8')
+        s = input()
         if s is not None and s != "":
             chat_sender.send_string(s)
         # need to do sleep here...
@@ -79,34 +64,17 @@ def connect(username: str, host: str = 'localhost', port: int=8888, screen_port:
     display.run_concurrent()
 
 
-    def control_screens(stdscr):
-        # curses set up
-        curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
-        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLACK)
-        # ensure that user input is echoed to the screen
-        curses.echo()
-        curses.curs_set(0)
+    screen_recv_thread = threading.Thread(target=screen_recv, args=(display_receiver,))
+    screen_recv_thread.daemon = True
+    screen_recv_thread.start()
 
-        window_height = curses.LINES
-        window_width = curses.COLS
-        division_line =  int(window_height * 0.8)
+    screen_send_thread = threading.Thread(target=screen_send, args=(sender,))
+    screen_send_thread.daemon = True
+    screen_send_thread.start()
 
-        # instaniate two pads - one for displaying received messages
-        # and one for showing the message the user is about to send off
-        top_pad = stdscr.subpad(division_line, window_width, 0, 0)
-        bottom_pad = stdscr.subpad(window_height - division_line, window_width, division_line, 0)
-        
-        top_thread = threading.Thread(target=start_top_window, args=(top_pad, display_receiver))
-        top_thread.daemon = True
-        top_thread.start()
-
-        bottom_thread = threading.Thread(target=start_bottom_window, args=(bottom_pad, sender))
-        bottom_thread.daemon = True
-        bottom_thread.start()
-
-        top_thread.join()
-        bottom_thread.join()
-    wrapper(control_screens)
+    
+    screen_recv_thread.join()
+    screen_send_thread.join()
 
 
 if '__main__' == __name__:
