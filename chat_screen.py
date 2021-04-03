@@ -1,4 +1,6 @@
 import threading
+from typing import Optional
+
 import zmq
 
 
@@ -7,7 +9,7 @@ class ChatScreen:
         self.context = zmq.Context()
         self.server_host = server_host
         self.server_port = server_port
-        self.display_sock = None
+        self.display_sock: Optional[zmq.Socket] = None
         self.display_pipe = display_pipe
         self.poller = zmq.Poller()
 
