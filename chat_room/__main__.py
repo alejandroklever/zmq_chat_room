@@ -25,12 +25,14 @@ def screen_send(username: str, chat_sender: zmq.Socket):
 
 
 @app.command()
-def serve(host: str = '*', port: int=8888, screen_host: str = '*', screen_port: int = 8889):                            
+def serve(host: str = '*', port: int=8888, screen_host: str = '*', screen_port: int = 8889):
+    print(f'Chat room started at {host}:{port}')                          
     server = ChatServer(host, port, screen_host, screen_port)
     try:
         server.run()
     except KeyboardInterrupt:
         pass
+
 
 @app.command()
 def connect(username: str, host: str = 'localhost', port: int=8888, screen_port: int = 8889):
